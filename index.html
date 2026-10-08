@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clawd at Recess</title>
+<style>
+  :root {
+    --ink: #1d1b1a;
+    --glass: rgba(255, 255, 255, 0.72);
+    --glass-edge: rgba(255, 255, 255, 0.9);
+    --accent: #d97757;
+    --muted: #5b5652;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #9fc3e6; overflow: hidden; font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+  body.pet { background:
+    radial-gradient(120% 90% at 20% 10%, #3b4a6b 0%, #1c2236 55%, #12151f 100%); }
+  body.pet::before { content: ""; position: fixed; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.05'%3E%3Cpath d='M0 80h160M80 0v160'/%3E%3C/g%3E%3C/svg%3E"); pointer-events: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+
+  .brand { position: fixed; top: 20px; left: 22px; pointer-events: none; }
+  .brand h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+  .brand p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  body.pet .brand h1, body.pet .brand p { color: #eef1f7; }
+
+  .now { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: blur(12px); font-weight: 700; font-size: 15px; box-shadow: 0 6px 24px rgba(30, 40, 60, 0.12); transition: opacity .35s, transform .35s; }
+  .now.swap { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+
+  .dock { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; border-radius: 18px; background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: blur(14px); box-shadow: 0 10px 34px rgba(30, 40, 60, 0.16); max-width: calc(100vw - 32px); overflow-x: auto; scrollbar-width: none; }
+  .dock::-webkit-scrollbar { display: none; }
+  .dock button { appearance: none; border: 0; background: transparent; padding: 9px 14px; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 650; color: var(--ink); cursor: pointer; white-space: nowrap; }
+  .dock button:hover { background: rgba(0, 0, 0, 0.05); }
+  .dock button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .dock .sep { width: 1px; background: rgba(0, 0, 0, 0.1); margin: 6px 2px; }
+
+  .hint { position: fixed; right: 20px; bottom: 26px; font-size: 12px; color: var(--muted); pointer-events: none; text-align: right; }
+  body.pet .hint { color: #b9c0cf; }
+  .err { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; }
+  @media (max-width: 640px) { .hint { display: none; } .brand p { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Clawd, the Claude mascot, playing at recess in 3D"></canvas>
+<div class="brand"><h1>Clawd at Recess</h1><p>Real-time 3D · one file · no dependencies</p></div>
+<div class="now" id="now">…</div>
+<nav class="dock" id="dock">
+  <button data-play="" aria-pressed="true">Auto</button>
+  <button data-play="jumpRope" aria-pressed="false">Jump rope</button>
+  <button data-play="swing" aria-pressed="false">Swing</button>
+  <button data-play="trampoline" aria-pressed="false">Trampoline</button>
+  <button data-play="ball" aria-pressed="false">Beach ball</button>
+  <button data-play="butterfly" aria-pressed="false">Butterfly</button>
+  <span class="sep"></span>
+  <button id="pet" aria-pressed="false" title="Transparent background, as the future desktop pet will look">Desktop pet</button>
+</nav>
+<div class="hint" id="hint">drag to orbit · scroll to zoom</div>
+
+<script src="clawd3d.js"></script>
+<script>
+  const q = new URLSearchParams(location.search)
+  const now = document.getElementById('now')
+  let stage
+  try {
+    stage = new Clawd3D.Stage(document.getElementById('stage'), {
+      transparent: q.has('transparent'),
+      activity: q.get('activity') || undefined,
+      seed: q.has('seed') ? Number(q.get('seed')) : undefined,
+    })
+  } catch (e) {
+    document.body.insertAdjacentHTML('beforeend', `<div class="err">This needs WebGL2, which this browser or GPU didn't provide.<br>${e.message}</div>`)
+    throw e
+  }
+  window.stage = stage
+
+  const show = label => {
+    now.classList.add('swap')
+    setTimeout(() => { now.textContent = label; now.classList.remove('swap') }, 180)
+  }
+  stage.on('activity', ({ label }) => show(label))
+  now.textContent = Clawd3D.LABELS[stage.current.name]
+
+  const buttons = [...document.querySelectorAll('[data-play]')]
+  buttons.forEach(b => b.addEventListener('click', () => {
+    buttons.forEach(x => x.setAttribute('aria-pressed', String(x === b)))
+    stage.play(b.dataset.play || null)
+  }))
+
+  const pet = document.getElementById('pet')
+  const setPet = on => {
+    pet.setAttribute('aria-pressed', String(on))
+    document.body.classList.toggle('pet', on)
+    stage.setTransparent(on)
+  }
+  pet.addEventListener('click', () => setPet(pet.getAttribute('aria-pressed') !== 'true'))
+  if (q.has('transparent')) setPet(true)
+
+  // ?activity=swing&t=4.2&seed=3 freezes on one moment (handy for stills)
+  if (q.has('t')) {
+    stage.seek(q.get('activity') || 'jumpRope', Number(q.get('t')), Number(q.get('seed') || 1))
+    show(Clawd3D.LABELS[stage.current.name] + ' · t=' + q.get('t'))
+  }
+</script>
+</body>
+</html>

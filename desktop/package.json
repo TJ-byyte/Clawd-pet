@@ -1,0 +1,47 @@
+{
+  "name": "clawd-desktop-pet",
+  "productName": "Clawd",
+  "version": "1.0.0",
+  "description": "Clawd plays on your desktop: on the taskbar, or floating in space.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "prepare-assets": "node tools/sync-engine.mjs && node tools/make-icons.mjs",
+    "start": "npm run prepare-assets && electron .",
+    "dist": "npm run prepare-assets && electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "dev.clawd.desktoppet",
+    "productName": "Clawd",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "overlay.html",
+      "overlay.js",
+      "settings.html",
+      "settings.js",
+      "engine/**",
+      "assets/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "Clawd-${version}.exe"
+    }
+  }
+}
